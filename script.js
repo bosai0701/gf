@@ -1,6 +1,6 @@
 // 地図の初期化
 document.addEventListener('DOMContentLoaded', () => {
-    const map = L.map('map');
+    const map = L.map('map').setView([35.0, 135.0], 5); // 日本全体を表示するように設定
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 地震データに合わせて地図をズーム
             const bounds = L.latLngBounds(data.features.map((earthquake) => [earthquake.geometry.coordinates[1], earthquake.geometry.coordinates[0]]));
-            map.fitBounds(bounds.pad(0.5)); // ズームアウトして表示
+            map.fitBounds(bounds.pad(0.2)); // ズームアウトして表示
         }).fail((jqxhr, textStatus, error) => {
             console.error('データの取得に失敗しました:', textStatus, error);
         });
