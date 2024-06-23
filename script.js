@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
 
         $.getJSON(url, (data) => {
+            console.log(data); // データをコンソールに出力
+
             // 既存のマーカーを削除
             map.eachLayer((layer) => {
                 if (layer instanceof L.CircleMarker) {
@@ -32,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 circle.bindPopup(`地点: ${place}<br>マグニチュード: ${magnitude}`);
             });
+        }).fail((jqxhr, textStatus, error) => {
+            console.error('データの取得に失敗しました:', textStatus, error);
         });
     };
 
