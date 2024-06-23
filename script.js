@@ -1,7 +1,6 @@
 // 地図の初期化
 document.addEventListener('DOMContentLoaded', () => {
-    // 初期表示範囲を北海道に設定
-    const map = L.map('map').setView([43.0, 141.0], 5);
+    const map = L.map('map');
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -21,16 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // S波とP波に沿ってズームするための座標計算
-            let latitudes = data.features.map((earthquake) => earthquake.geometry.coordinates[1]);
-            let longitudes = data.features.map((earthquake) => earthquake.geometry.coordinates[0]);
-            let maxLatitude = Math.max(...latitudes);
-            let minLatitude = Math.min(...latitudes);
-            let maxLongitude = Math.max(...longitudes);
-            let minLongitude = Math.min(...longitudes);
-            let centerLat = (maxLatitude + minLatitude) / 2;
-            let centerLng = (maxLongitude + minLongitude) / 2;
-
             // マーカーとポップアップを地図に追加
             data.features.forEach((earthquake) => {
                 const coords = earthquake.geometry.coordinates;
@@ -49,8 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 circle.bindPopup(`地点: ${place}<br>マグニチュード: ${magnitude}`);
             });
 
-            // S波とP波に沿ってズーム
-            map.setView([centerLat, centerLng], 8); // 中心座標にズーム
+            // 地震データに合わせて地図をズーム
+            const bounds = L.latLngBounds(data.features.map((earthquake) => [earthquake.geometry.coordinates[1], earthquake.geometry.coordinates[0]]));
+            map.fitBounds(bounds.pad(0.5)); // ズームアウトして表示
         }).fail((jqxhr, textStatus, error) => {
             console.error('データの取得に失敗しました:', textStatus, error);
         });
