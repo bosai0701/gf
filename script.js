@@ -6,12 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // 地震データの取得
-    const fetchEarthquakeData = () => {
+    // 地震データの取得と表示
+    const fetchAndDisplayEarthquakeData = () => {
         const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
 
         $.getJSON(url, (data) => {
-            console.log(data); // データをコンソールに出力
+            console.log('地震データを取得しました:', data); // データをコンソールに出力
 
             // 既存のマーカーを削除
             map.eachLayer((layer) => {
@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const coords = earthquake.geometry.coordinates;
                 const magnitude = earthquake.properties.mag;
                 const place = earthquake.properties.place;
+
+                console.log(`地震をプロット: ${place}, マグニチュード: ${magnitude}`); // ログを出力
 
                 const circle = L.circleMarker([coords[1], coords[0]], {
                     radius: magnitude * 3, // マグニチュードに基づいてサイズを調整
@@ -39,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // 初回データ取得
-    fetchEarthquakeData();
+    // 初回データ取得と表示
+    fetchAndDisplayEarthquakeData();
 
     // データを定期的に更新
-    setInterval(fetchEarthquakeData, 60000); // 1分毎に更新
+    setInterval(fetchAndDisplayEarthquakeData, 1000); // 1秒毎に更新
 });
