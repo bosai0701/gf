@@ -8,18 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 地震データの取得と表示
     const fetchAndDisplayEarthquakeData = () => {
-        const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
+        const url = 'https://api.hinet.bosai.go.jp/nied/1/query?source=HP1&time_from=now-1h&includeall=true'; // NIEDの地震データを取得
 
         $.getJSON(url, (data) => {
             console.log('地震データを取得しました:', data); // データをコンソールに出力
-
-            // 日本国内の地震データのみをフィルタリング
-            const japanEarthquakes = data.features.filter((earthquake) => {
-                const coords = earthquake.geometry.coordinates;
-                const lat = coords[1];
-                const lng = coords[0];
-                return lat >= 20 && lat <= 45 && lng >= 122 && lng <= 153; // 日本国内の緯度経度範囲
-            });
 
             // 既存のマーカーを削除
             map.eachLayer((layer) => {
@@ -29,9 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // マーカーとポップアップを地図に追加
-            japanEarthquakes.forEach((earthquake) => {
+            data.forEach((earthquake) => {
                 const coords = earthquake.geometry.coordinates;
-                const magnitude = earthquake.properties.mag;
+                const magnitude = earthquake.properties.magnitude;
                 const place = earthquake.properties.place;
 
                 console.log(`地震をプロット: ${place}, マグニチュード: ${magnitude}`); // ログを出力
@@ -47,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 地震データに合わせて地図をズーム
-            const bounds = L.latLngBounds(japanEarthquakes.map((earthquake) => [earthquake.geometry.coordinates[1], earthquake.geometry.coordinates[0]]));
+            const bounds = L.latLngBounds(data.map((earthquake) => [earthquake.geometry.coordinates[1], earthquake.geometry.coordinates[0]]));
             map.fitBounds(bounds.pad(0.2)); // ズームアウトして表示
         }).fail((jqxhr, textStatus, error) => {
             console.error('データの取得に失敗しました:', textStatus, error);
