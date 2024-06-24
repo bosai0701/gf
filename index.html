@@ -28,17 +28,19 @@
         }
 
         .p-wave {
-            background-color: blue;
+            background-color: #1F77B4; /* Blue color for p-waves */
             width: 3px;
             height: 3px;
             border-radius: 50%;
+            opacity: 0.6;
         }
 
         .s-wave {
-            background-color: red;
+            background-color: #FF0000; /* Red color for s-waves */
             width: 5px;
             height: 5px;
             border-radius: 50%;
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -53,65 +55,35 @@
             maxZoom: 19
         }).addTo(map);
 
-        const observatories = [{
-                name: "Tokyo",
-                lat: 35.6895,
-                lon: 139.6917
-            },
-            {
-                name: "San Francisco",
-                lat: 37.7749,
-                lon: -122.4194
-            },
-            {
-                name: "Mexico City",
-                lat: 19.4326,
-                lon: -99.1332
-            },
-            {
-                name: "Wellington",
-                lat: -41.2865,
-                lon: 174.7762
-            },
-            {
-                name: "Istanbul",
-                lat: 41.0082,
-                lon: 28.9784
-            }
-        ];
-        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon], {
-            icon: L.divIcon({
-                className: 'observatory-marker'
-            })
-        }).addTo(map).bindTooltip(`<b>${obs.name}</b>`, {
-            permanent: true,
-            direction: 'right'
-        }));
-
         let earthquakeMarkers = [];
         let waveCircles = [];
-        let lastEarthquakeTime = 0;
 
         function fetchEarthquakeData() {
             fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson')
                 .then(response => response.json())
                 .then(data => {
-                    updateEarthquakeMarkers(data.features);
-                    simulateWaves(data.features);
-                    zoomToLatestEarthquake(data.features);
+                    const sortedEarthquakes = data.features.sort((a, b) => {
+                        // マグニチュードが大きい順に、同じマグニチュードの場合は震度が大きい順にソート
+                        if (a.properties.mag === b.properties.mag) {
+                            return b.properties.magType.localeCompare(a.properties.magType);
+                        }
+                        return b.properties.mag - a.properties.mag;
+                    });
+                    updateEarthquakeMarkers(sortedEarthquakes);
+                    simulateWaves(sortedEarthquakes);
+                    zoomToLatestEarthquake(sortedEarthquakes);
                 });
         }
 
         function getIntensityColor(magnitude) {
-            if (magnitude >= 7) return '#800080'; // 震度7
-            if (magnitude >= 6.5) return '#8B0000'; // 震度6強
-            if (magnitude >= 6) return '#FF0000'; // 震度6弱
-            if (magnitude >= 5.5) return '#FF4500'; // 震度5強
-            if (magnitude >= 5) return '#FFA500'; // 震度5弱
-            if (magnitude >= 4) return '#FFD700'; // 震度4
-            if (magnitude >= 3) return '#FFFF00'; // 震度3
-            if (magnitude >= 2) return '#ADFF2F'; // 震度2
-            return '#00FF00'; // 震度1
+            // 震度ごとの色を設定（気象庁の震度分布の色を参考にしています）
+            if (magnitude >= 7) return '#990000'; // 震度7 (赤色)
+            if (magnitude >= 6) return '#FF0000'; // 震度6弱～6強 (赤色)
+            if (magnitude >= 5) return '#FF4500'; // 震度5強～5弱 (オレンジ色)
+            if (magnitude >= 4) return '#FFD700'; // 震度4 (黄色)
+            if (magnitude >= 3) return '#FFFF00'; // 震度3 (黄色)
+            if (magnitude >= 2) return '#9ACD32'; // 震度2 (緑色)
+            return '#00FF00'; // 震度1以下 (青色)
         }
 
         function updateEarthquakeMarkers(earthquakes) {
@@ -140,13 +112,13 @@
 
                 const pWave = L.circle([lat, lon], {
                     radius: magnitude * 10000,
-                    color: 'blue',
+                    color: '#1F77B4', // Blue color for p-waves
                     fill: false,
                     className: 'wave-circle p-wave'
                 }).addTo(map);
                 const sWave = L.circle([lat, lon], {
                     radius: magnitude * 15000,
-                    color: 'red',
+                    color: '#FF0000', // Red color for s-waves
                     fill: false,
                     className: 'wave-circle s-wave'
                 }).addTo(map);
@@ -160,126 +132,6 @@
                     waveCircles = waveCircles.filter(circle => circle !== pWave && circle !== sWave);
                 }, 20000); // 20秒後に波を消去
             });
-        }
-
-        function zoomToLatestEarthquake(earthquakes) {
-            if (earthquakes.length > 0) {
-                const latestEarthquake = earthquakes[0];
-                const [lon, lat] = latestEarthquake.geometry.coordinates;
-                map.setView([lat, lon], 8); // 地震発生地点にズーム
-            }
-        }
-
-        fetchEarthquakeData();
-        setInterval(fetchEarthquakeData, 1000); // 1秒ごとに更新
-    </script>
-</body>
-
-</html><!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム強震モニタ</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <style>
-        #map {
-            height: 600px;
-            width: 100%;
-        }
-
-        .observatory-marker {
-            color: white;
-            background-color: black;
-            border-radius: 50%;
-            width: 10px;
-            height: 10px;
-        }
-
-        .wave-circle {
-            position: absolute;
-            pointer-events: none;
-            opacity: 0.7;
-            transition: all 0.5s ease-in-out;
-        }
-
-        .p-wave {
-            background-color: blue;
-            width: 3px;
-            height: 3px;
-            border-radius: 50%;
-        }
-
-        .s-wave {
-            background-color: red;
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>リアルタイム強震モニタ</h1>
-    <div id="map"></div>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
-        const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(map);
-
-        let earthquakeMarkers = [];
-        let waveCircles = [];
-        let lastEarthquakeTime = 0;
-
-        function fetchEarthquakeData() {
-            fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson')
-                .then(response => response.json())
-                .then(data => {
-                    const filteredEarthquakes = data.features.filter(earthquake => earthquake.properties.magType !== 'md'); // マグニチュードデータが欠落した地震を除外
-                    updateEarthquakeMarkers(filteredEarthquakes);
-                    simulateWaves(filteredEarthquakes);
-                    zoomToLatestEarthquake(filteredEarthquakes);
-                });
-        }
-
-        function getIntensityColor(magnitude) {
-            // 震度ごとの色を設定
-            if (magnitude >= 7) return '#800080'; // 震度7
-            if (magnitude >= 6.5) return '#8B0000'; // 震度6強
-            if (magnitude >= 6) return '#FF0000'; // 震度6弱
-            if (magnitude >= 5.5) return '#FF4500'; // 震度5強
-            if (magnitude >= 5) return '#FFA500'; // 震度5弱
-            if (magnitude >= 4) return '#FFD700'; // 震度4
-            if (magnitude >= 3) return '#FFFF00'; // 震度3
-            if (magnitude >= 2) return '#ADFF2F'; // 震度2
-            return '#00FF00'; // 震度1
-        }
-
-        function updateEarthquakeMarkers(earthquakes) {
-            earthquakeMarkers.forEach(marker => map.removeLayer(marker));
-            earthquakeMarkers = earthquakes.map(earthquake => {
-                const [lon, lat, depth] = earthquake.geometry.coordinates;
-                const magnitude = earthquake.properties.mag;
-                const place = earthquake.properties.place;
-                const time = new Date(earthquake.properties.time).toLocaleString();
-                const color = getIntensityColor(magnitude);
-                const marker = L.circleMarker([lat, lon], {
-                    radius: magnitude * 2,
-                    color: color,
-                    fillOpacity: 0.5
-                }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, {
-                    permanent: true
-                });
-                return marker;
-            });
-        }
-
-        function simulateWaves(earthquakes) {
-            // 波のシミュレーション処理
-            // ここに波の表示や消去の処理を書く
         }
 
         function zoomToLatestEarthquake(earthquakes) {
