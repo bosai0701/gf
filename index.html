@@ -59,7 +59,7 @@
         let waveCircles = [];
 
         function fetchEarthquakeData() {
-            fetch('https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2024-01-01&endtime=2024-06-30&minmagnitude=4&orderby=time')
+            fetch('https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2024-01-01&endtime=2024-06-30&orderby=time')
                 .then(response => response.json())
                 .then(data => {
                     const sortedEarthquakes = data.features;
