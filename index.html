@@ -96,21 +96,30 @@
                 const [lon, lat, depth] = earthquake.geometry.coordinates;
                 const eventTime = new Date(earthquake.properties.time).getTime() / 1000;
                 const elapsedTime = currentTime - eventTime;
-                const distance = calculateDistance(lat, lon, lat, lon, depth);
-                const pWaveRadius = Math.min(P_WAVE_SPEED * elapsedTime, 20000);
-                const sWaveRadius = Math.min(S_WAVE_SPEED * elapsedTime, 20000);
+
+                const pWaveRadius = P_WAVE_SPEED * elapsedTime;
+                const sWaveRadius = S_WAVE_SPEED * elapsedTime;
 
                 const pWaveCircle = L.circle([lat, lon], { radius: pWaveRadius * 1000, color: 'blue', fill: false }).addTo(map);
                 const sWaveCircle = L.circle([lat, lon], { radius: sWaveRadius * 1000, color: 'red', fill: false }).addTo(map);
 
                 pWaveCircles.push(pWaveCircle);
                 sWaveCircles.push(sWaveCircle);
-                
-                if (elapsedTime < pWaveRadius / P_WAVE_SPEED) {
-                    map.setView([lat, lon], 8);
-                } else if (elapsedTime < sWaveRadius / S_WAVE_SPEED) {
-                    map.setView([lat, lon], 5);
+
+                if (elapsedTime < 200) {
+                    if (elapsedTime < pWaveRadius / P_WAVE_SPEED) {
+                        map.setView([lat, lon], 8);
+                    } else if (elapsedTime < sWaveRadius / S_WAVE_SPEED) {
+                        map.setView([lat, lon], 5);
+                    }
                 }
+
+                setTimeout(() => {
+                    map.removeLayer(pWaveCircle);
+                    map.removeLayer(sWaveCircle);
+                    pWaveCircles = pWaveCircles.filter(circle => circle !== pWaveCircle);
+                    sWaveCircles = sWaveCircles.filter(circle => circle !== sWaveCircle);
+                }, 20000); // 20秒後に波の表示を消す
             });
         }
 
