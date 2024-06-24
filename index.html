@@ -68,27 +68,13 @@
                 });
         }
 
-        function getIntensityColor(magnitude) {
-            if (magnitude >= 7) return '#800080'; // 震度7
-            if (magnitude >= 6.5) return '#8B0000'; // 震度6強
-            if (magnitude >= 6) return '#FF0000'; // 震度6弱
-            if (magnitude >= 5.5) return '#FF4500'; // 震度5強
-            if (magnitude >= 5) return '#FFA500'; // 震度5弱
-            if (magnitude >= 4) return '#FFD700'; // 震度4
-            if (magnitude >= 3) return '#FFFF00'; // 震度3
-            if (magnitude >= 2) return '#ADFF2F'; // 震度2
-            return '#00FF00'; // 震度1
-        }
-
         function updateEarthquakeMarkers(earthquakes) {
             earthquakeMarkers.forEach(marker => map.removeLayer(marker));
             earthquakeMarkers = earthquakes.map(earthquake => {
                 const [lon, lat, depth] = earthquake.geometry.coordinates;
                 const magnitude = earthquake.properties.mag;
-                const place = earthquake.properties.place;
-                const time = new Date(earthquake.properties.time).toLocaleString();
-                const color = getIntensityColor(magnitude);
-                const marker = L.circleMarker([lat, lon], { radius: magnitude * 2, color: color, fillOpacity: 0.5 }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, { permanent: true });
+                const marker = L.circleMarker([lat, lon], { radius: magnitude * 2, color: 'black', fillOpacity: 0.5 }).addTo(map);
+                marker.bindPopup(`<b>Magnitude:</b> ${magnitude}`).openPopup();
                 return marker;
             });
         }
