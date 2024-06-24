@@ -32,14 +32,19 @@
         let earthquakeMarkers = [];
         let pWaveCircles = [];
         let sWaveCircles = [];
+        let lastEarthquakeTime = 0;
 
         function fetchEarthquakeData() {
             fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson')
                 .then(response => response.json())
                 .then(data => {
-                    updateEarthquakeMarkers(data.features);
-                    simulateWaves(data.features);
-                    zoomToLatestEarthquake(data.features);
+                    const newEarthquakes = data.features.filter(eq => eq.properties.time > lastEarthquakeTime);
+                    if (newEarthquakes.length > 0) {
+                        lastEarthquakeTime = newEarthquakes[0].properties.time;
+                        updateEarthquakeMarkers(newEarthquakes);
+                        simulateWaves(newEarthquakes);
+                        zoomToLatestEarthquake(newEarthquakes);
+                    }
                 });
         }
 
@@ -95,11 +100,17 @@
                 const pWaveRadius = Math.min(P_WAVE_SPEED * elapsedTime, 20000);
                 const sWaveRadius = Math.min(S_WAVE_SPEED * elapsedTime, 20000);
 
-                const pWaveCircle = L.circle([lat, lon], { radius: pWaveRadius * 1000, color: 'blue', fillOpacity: 0.2 }).addTo(map);
-                const sWaveCircle = L.circle([lat, lon], { radius: sWaveRadius * 1000, color: 'red', fillOpacity: 0.2 }).addTo(map);
+                const pWaveCircle = L.circle([lat, lon], { radius: pWaveRadius * 1000, color: 'blue', fill: false }).addTo(map);
+                const sWaveCircle = L.circle([lat, lon], { radius: sWaveRadius * 1000, color: 'red', fill: false }).addTo(map);
 
                 pWaveCircles.push(pWaveCircle);
                 sWaveCircles.push(sWaveCircle);
+                
+                if (elapsedTime < pWaveRadius / P_WAVE_SPEED) {
+                    map.setView([lat, lon], 8);
+                } else if (elapsedTime < sWaveRadius / S_WAVE_SPEED) {
+                    map.setView([lat, lon], 5);
+                }
             });
         }
 
@@ -107,7 +118,7 @@
             if (earthquakes.length > 0) {
                 const latestEarthquake = earthquakes[0];
                 const [lon, lat] = latestEarthquake.geometry.coordinates;
-                map.setView([lat, lon], 5); // 地震発生地点にズーム
+                map.setView([lat, lon], 8); // 地震発生地点にズーム
             }
         }
 
