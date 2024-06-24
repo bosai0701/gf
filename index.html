@@ -17,17 +17,23 @@
             width: 10px;
             height: 10px;
         }
+        .wave-circle {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.7;
+            transition: all 0.5s ease-in-out;
+        }
         .p-wave {
-            background-color: rgba(0, 0, 255, 0.5);
+            background-color: blue;
+            width: 3px;
+            height: 3px;
             border-radius: 50%;
-            width: 10px;
-            height: 10px;
         }
         .s-wave {
-            background-color: rgba(255, 0, 0, 0.5);
+            background-color: red;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
-            width: 10px;
-            height: 10px;
         }
     </style>
 </head>
@@ -49,8 +55,7 @@
         const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon], { icon: L.divIcon({ className: 'observatory-marker' }) }).addTo(map).bindTooltip(`<b>${obs.name}</b>`, { permanent: true, direction: 'right' }));
 
         let earthquakeMarkers = [];
-        let pWaveCircles = [];
-        let sWaveCircles = [];
+        let waveCircles = [];
         let lastEarthquakeTime = 0;
 
         function fetchEarthquakeData() {
@@ -89,38 +94,21 @@
         }
 
         function simulateWaves(earthquakes) {
-            const P_WAVE_SPEED = 6.0; // km/s
-            const S_WAVE_SPEED = 3.5; // km/s
-            const currentTime = new Date().getTime() / 1000;
-
             earthquakes.forEach(earthquake => {
                 const [lon, lat, depth] = earthquake.geometry.coordinates;
-                const eventTime = new Date(earthquake.properties.time).getTime() / 1000;
-                const elapsedTime = currentTime - eventTime;
+                const magnitude = earthquake.properties.mag;
 
-                const pWaveRadius = P_WAVE_SPEED * elapsedTime;
-                const sWaveRadius = S_WAVE_SPEED * elapsedTime;
+                const pWave = L.circle([lat, lon], { radius: magnitude * 10000, color: 'blue', fill: false, className: 'wave-circle p-wave' }).addTo(map);
+                const sWave = L.circle([lat, lon], { radius: magnitude * 15000, color: 'red', fill: false, className: 'wave-circle s-wave' }).addTo(map);
 
-                const pWaveCircle = L.circle([lat, lon], { radius: pWaveRadius * 1000, color: 'blue', fill: false }).addTo(map);
-                const sWaveCircle = L.circle([lat, lon], { radius: sWaveRadius * 1000, color: 'red', fill: false }).addTo(map);
-
-                pWaveCircles.push(pWaveCircle);
-                sWaveCircles.push(sWaveCircle);
-
-                if (elapsedTime < 200) {
-                    if (elapsedTime < pWaveRadius / P_WAVE_SPEED) {
-                        map.setView([lat, lon], 8);
-                    } else if (elapsedTime < sWaveRadius / S_WAVE_SPEED) {
-                        map.setView([lat, lon], 5);
-                    }
-                }
+                waveCircles.push(pWave);
+                waveCircles.push(sWave);
 
                 setTimeout(() => {
-                    map.removeLayer(pWaveCircle);
-                    map.removeLayer(sWaveCircle);
-                    pWaveCircles = pWaveCircles.filter(circle => circle !== pWaveCircle);
-                    sWaveCircles = sWaveCircles.filter(circle => circle !== sWaveCircle);
-                }, 20000); // 20秒後に波の表示を消す
+                    map.removeLayer(pWave);
+                    map.removeLayer(sWave);
+                    waveCircles = waveCircles.filter(circle => circle !== pWave && circle !== sWave);
+                }, 20000); // 20秒後に波を消去
             });
         }
 
