@@ -1,23 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Seismic Monitor</title>
+    <title>リアルタイム地震監視システム</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         #map {
             height: 600px;
             width: 100%;
-        }
-
-        .observatory-marker {
-            color: white;
-            background-color: black;
-            border-radius: 50%;
-            width: 10px;
-            height: 10px;
         }
 
         .wave-circle {
@@ -28,7 +20,7 @@
         }
 
         .p-wave {
-            border: 3px solid #1F77B4; /* Blue color for p-waves */
+            border: 3px solid #1F77B4; /* 青色のp波 */
             width: 0;
             height: 0;
             border-radius: 50%;
@@ -36,7 +28,7 @@
         }
 
         .s-wave {
-            border: 3px solid #FF0000; /* Red color for s-waves */
+            border: 3px solid #FF0000; /* 赤色のs波 */
             width: 0;
             height: 0;
             border-radius: 50%;
@@ -46,7 +38,7 @@
 </head>
 
 <body>
-    <h1>Real-time Seismic Monitor</h1>
+    <h1>リアルタイム地震監視システム</h1>
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
@@ -92,7 +84,7 @@
                     radius: magnitude * 2,
                     color: color,
                     fillOpacity: 0.5
-                }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, {
+                }).addTo(map).bindTooltip(`<b>場所:</b> ${place}<br><b>マグニチュード:</b> ${magnitude}<br><b>時間:</b> ${time}`, {
                     permanent: true
                 });
                 return marker;
