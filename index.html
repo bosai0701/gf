@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
             height: 600px;
             width: 100%;
         }
+
         .observatory-marker {
             color: white;
             background-color: black;
@@ -17,18 +19,21 @@
             width: 10px;
             height: 10px;
         }
+
         .wave-circle {
             position: absolute;
             pointer-events: none;
             opacity: 0.7;
             transition: all 0.5s ease-in-out;
         }
+
         .p-wave {
             background-color: blue;
             width: 3px;
             height: 3px;
             border-radius: 50%;
         }
+
         .s-wave {
             background-color: red;
             width: 5px;
@@ -37,22 +42,51 @@
         }
     </style>
 </head>
+
 <body>
     <h1>リアルタイム強震モニタ</h1>
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
 
-        const observatories = [
-            { name: "Tokyo", lat: 35.6895, lon: 139.6917 },
-            { name: "San Francisco", lat: 37.7749, lon: -122.4194 },
-            { name: "Mexico City", lat: 19.4326, lon: -99.1332 },
-            { name: "Wellington", lat: -41.2865, lon: 174.7762 },
-            { name: "Istanbul", lat: 41.0082, lon: 28.9784 }
+        const observatories = [{
+                name: "Tokyo",
+                lat: 35.6895,
+                lon: 139.6917
+            },
+            {
+                name: "San Francisco",
+                lat: 37.7749,
+                lon: -122.4194
+            },
+            {
+                name: "Mexico City",
+                lat: 19.4326,
+                lon: -99.1332
+            },
+            {
+                name: "Wellington",
+                lat: -41.2865,
+                lon: 174.7762
+            },
+            {
+                name: "Istanbul",
+                lat: 41.0082,
+                lon: 28.9784
+            }
         ];
-        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon], { icon: L.divIcon({ className: 'observatory-marker' }) }).addTo(map).bindTooltip(`<b>${obs.name}</b>`, { permanent: true, direction: 'right' }));
+        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon], {
+            icon: L.divIcon({
+                className: 'observatory-marker'
+            })
+        }).addTo(map).bindTooltip(`<b>${obs.name}</b>`, {
+            permanent: true,
+            direction: 'right'
+        }));
 
         let earthquakeMarkers = [];
         let waveCircles = [];
@@ -68,13 +102,33 @@
                 });
         }
 
+        function getIntensityColor(magnitude) {
+            if (magnitude >= 7) return '#800080'; // 震度7
+            if (magnitude >= 6.5) return '#8B0000'; // 震度6強
+            if (magnitude >= 6) return '#FF0000'; // 震度6弱
+            if (magnitude >= 5.5) return '#FF4500'; // 震度5強
+            if (magnitude >= 5) return '#FFA500'; // 震度5弱
+            if (magnitude >= 4) return '#FFD700'; // 震度4
+            if (magnitude >= 3) return '#FFFF00'; // 震度3
+            if (magnitude >= 2) return '#ADFF2F'; // 震度2
+            return '#00FF00'; // 震度1
+        }
+
         function updateEarthquakeMarkers(earthquakes) {
             earthquakeMarkers.forEach(marker => map.removeLayer(marker));
             earthquakeMarkers = earthquakes.map(earthquake => {
                 const [lon, lat, depth] = earthquake.geometry.coordinates;
                 const magnitude = earthquake.properties.mag;
-                const marker = L.circleMarker([lat, lon], { radius: magnitude * 2, color: 'black', fillOpacity: 0.5 }).addTo(map);
-                marker.bindPopup(`<b>Magnitude:</b> ${magnitude}`).openPopup();
+                const place = earthquake.properties.place;
+                const time = new Date(earthquake.properties.time).toLocaleString();
+                const color = getIntensityColor(magnitude);
+                const marker = L.circleMarker([lat, lon], {
+                    radius: magnitude * 2,
+                    color: color,
+                    fillOpacity: 0.5
+                }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, {
+                    permanent: true
+                });
                 return marker;
             });
         }
@@ -84,8 +138,18 @@
                 const [lon, lat, depth] = earthquake.geometry.coordinates;
                 const magnitude = earthquake.properties.mag;
 
-                const pWave = L.circle([lat, lon], { radius: magnitude * 10000, color: 'blue', fill: false, className: 'wave-circle p-wave' }).addTo(map);
-                const sWave = L.circle([lat, lon], { radius: magnitude * 15000, color: 'red', fill: false, className: 'wave-circle s-wave' }).addTo(map);
+                const pWave = L.circle([lat, lon], {
+                    radius: magnitude * 10000,
+                    color: 'blue',
+                    fill: false,
+                    className: 'wave-circle p-wave'
+                }).addTo(map);
+                const sWave = L.circle([lat, lon], {
+                    radius: magnitude * 15000,
+                    color: 'red',
+                    fill: false,
+                    className: 'wave-circle s-wave'
+                }).addTo(map);
 
                 waveCircles.push(pWave);
                 waveCircles.push(sWave);
@@ -110,4 +174,5 @@
         setInterval(fetchEarthquakeData, 1000); // 1秒ごとに更新
     </script>
 </body>
+
 </html>
