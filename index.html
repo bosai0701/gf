@@ -1,20 +1,103 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>リアルタイム強震モニタ</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         #map {
-            height: 100vh;
+            height: 600px;
+            width: 100%;
+        }
+        .leaflet-tooltip.no-background {
+            background: none;
+            border: none;
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
+    <h1>リアルタイム強震モニタ</h1>
     <div id="map"></div>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="script.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+        const observatories = [
+            { name: "Tokyo", lat: 35.6895, lon: 139.6917 },
+            { name: "San Francisco", lat: 37.7749, lon: -122.4194 },
+            { name: "Mexico City", lat: 19.4326, lon: -99.1332 },
+            { name: "Wellington", lat: -41.2865, lon: 174.7762 },
+            { name: "Istanbul", lat: 41.0082, lon: 28.9784 }
+        ];
+        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon]).addTo(map).bindTooltip(`<b>${obs.name}</b>`, { permanent: true, direction: 'right' }));
+        let earthquakeMarkers = [];
+
+        function fetchEarthquakeData() {
+            fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    updateEarthquakeMarkers(data.features);
+                    simulateWaves(data.features);
+                    zoomToLatestEarthquake(data.features);
+                });
+        }
+
+        function updateEarthquakeMarkers(earthquakes) {
+            earthquakeMarkers.forEach(marker => map.removeLayer(marker));
+            earthquakeMarkers = earthquakes.map(earthquake => {
+                const [lon, lat] = earthquake.geometry.coordinates;
+                const magnitude = earthquake.properties.mag;
+                const place = earthquake.properties.place;
+                const time = new Date(earthquake.properties.time).toLocaleString();
+                const marker = L.circleMarker([lat, lon], { radius: magnitude * 2, color: 'red', fillOpacity: 0.5 }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, { permanent: true });
+                return marker;
+            });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2, depth) {
+            function toRad(x) { return x * Math.PI / 180; }
+            const R = 6371; // km (mean radius of the Earth)
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            const totalDistance = Math.sqrt(distance * distance + depth * depth);
+            return totalDistance;
+        }
+
+        function simulateWaves(earthquakes) {
+            const P_WAVE_SPEED = 6.0; const S_WAVE_SPEED = 3.5;
+            const currentTime = new Date().getTime() / 1000;
+            observatoryMarkers.forEach(marker => {
+                const observatory = observatories.find(obs => obs.lat === marker.getLatLng().lat && obs.lon === marker.getLatLng().lng);
+                let popupContent = `<b>${observatory.name}</b>`;
+                earthquakes.forEach(earthquake => {
+                    const [lon, lat, depth] = earthquake.geometry.coordinates;
+                    const eventTime = new Date(earthquake.properties.time).getTime() / 1000;
+                    const elapsedTime = currentTime - eventTime;
+                    const distance = calculateDistance(lat, lon, observatory.lat, observatory.lon, depth);
+                    const pWaveArrival = distance / P_WAVE_SPEED;
+                    const sWaveArrival = distance / S_WAVE_SPEED;
+                    if (elapsedTime >= pWaveArrival && elapsedTime < sWaveArrival) { popupContent += '<br>P波到達'; } else if (elapsedTime >= sWaveArrival) { popupContent += '<br>S波到達'; }
+                });
+                marker.setTooltipContent(popupContent);
+            });
+        }
+
+        function zoomToLatestEarthquake(earthquakes) {
+            if (earthquakes.length > 0) {
+                const latestEarthquake = earthquakes[0];
+                const [lon, lat] = latestEarthquake.geometry.coordinates;
+                map.setView([lat, lon], 5); // 地震発生地点にズーム
+            }
+        }
+
+        fetchEarthquakeData();
+        setInterval(fetchEarthquakeData, 1000); // Update every second
+    </script>
 </body>
 </html>
