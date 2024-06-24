@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム強震モニタ</title>
+    <title>Real-time Seismic Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         #map {
@@ -46,7 +46,7 @@
 </head>
 
 <body>
-    <h1>リアルタイム強震モニタ</h1>
+    <h1>Real-time Seismic Monitor</h1>
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
@@ -70,14 +70,14 @@
         }
 
         function getIntensityColor(magnitude) {
-            // 震度ごとの色を設定（気象庁の震度分布の色を参考にしています）
-            if (magnitude >= 7) return '#990000'; // 震度7 (赤色)
-            if (magnitude >= 6) return '#FF0000'; // 震度6弱～6強 (赤色)
-            if (magnitude >= 5) return '#FF4500'; // 震度5強～5弱 (オレンジ色)
-            if (magnitude >= 4) return '#FFD700'; // 震度4 (黄色)
-            if (magnitude >= 3) return '#FFFF00'; // 震度3 (黄色)
-            if (magnitude >= 2) return '#9ACD32'; // 震度2 (緑色)
-            return '#00FF00'; // 震度1以下 (青色)
+            // Set color based on magnitude (reference from Japan Meteorological Agency intensity distribution)
+            if (magnitude >= 7) return '#990000'; // Intensity 7 (red)
+            if (magnitude >= 6) return '#FF0000'; // Intensity 6- (red)
+            if (magnitude >= 5) return '#FF4500'; // Intensity 5+ (orange)
+            if (magnitude >= 4) return '#FFD700'; // Intensity 4 (yellow)
+            if (magnitude >= 3) return '#FFFF00'; // Intensity 3 (yellow)
+            if (magnitude >= 2) return '#9ACD32'; // Intensity 2 (green)
+            return '#00FF00'; // Intensity 1 or below (blue)
         }
 
         function updateEarthquakeMarkers(earthquakes) {
@@ -134,7 +134,7 @@
                         map.removeLayer(pWave);
                         map.removeLayer(sWave);
                     }
-                }, 1000); // 1秒ごとに更新
+                }, 1000); // Update every 1 second
             });
         }
 
@@ -142,12 +142,12 @@
             if (earthquakes.length > 0) {
                 const latestEarthquake = earthquakes[0];
                 const [lon, lat] = latestEarthquake.geometry.coordinates;
-                map.setView([lat, lon], 8); // 地震発生地点にズーム
+                map.setView([lat, lon], 8); // Zoom to the epicenter
             }
         }
 
         fetchEarthquakeData();
-        setInterval(fetchEarthquakeData, 1000); // 1秒ごとに更新
+        setInterval(fetchEarthquakeData, 1000); // Update every 1 second
     </script>
 </body>
 
