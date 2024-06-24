@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,21 +28,44 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        let earthquakeMarkers = [];
+
         // Function to create earthquake markers
         function createEarthquakeMarker(earthquake) {
-            const { lat, lng } = earthquake.geometry.coordinates;
+            const [lng, lat, depth] = earthquake.geometry.coordinates;
             const magnitude = earthquake.properties.mag;
-            const depth = earthquake.geometry.coordinates[2];
             const place = earthquake.properties.place;
 
-            const circle = L.circle([lat, lng], {
+            // Remove old markers
+            earthquakeMarkers.forEach(marker => map.removeLayer(marker));
+            earthquakeMarkers = [];
+
+            // Zoom to earthquake location
+            map.setView([lat, lng], 6);
+
+            // Create P-wave and S-wave circles
+            const pWaveRadius = magnitude * 5000;
+            const sWaveRadius = magnitude * 10000;
+
+            const pWaveCircle = L.circle([lat, lng], {
+                color: 'blue',
+                fillColor: '#30f',
+                fillOpacity: 0.5,
+                radius: pWaveRadius
+            }).addTo(map);
+
+            const sWaveCircle = L.circle([lat, lng], {
                 color: 'red',
                 fillColor: '#f03',
                 fillOpacity: 0.5,
-                radius: magnitude * 10000
+                radius: sWaveRadius
             }).addTo(map);
 
-            circle.bindPopup(`<div class="info">
+            // Add circles to the list of earthquake markers
+            earthquakeMarkers.push(pWaveCircle, sWaveCircle);
+
+            // Add popup to the marker
+            pWaveCircle.bindPopup(`<div class="info">
                 <strong>Location:</strong> ${place}<br>
                 <strong>Magnitude:</strong> ${magnitude}<br>
                 <strong>Depth:</strong> ${depth} km
@@ -54,9 +77,9 @@
             try {
                 const response = await axios.get('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson');
                 const earthquakes = response.data.features;
-                earthquakes.forEach(earthquake => {
-                    createEarthquakeMarker(earthquake);
-                });
+                if (earthquakes.length > 0) {
+                    createEarthquakeMarker(earthquakes[0]);
+                }
             } catch (error) {
                 console.error('Error fetching earthquake data:', error);
             }
