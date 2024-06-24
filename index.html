@@ -10,6 +10,25 @@
             height: 600px;
             width: 100%;
         }
+        .observatory-marker {
+            color: white;
+            background-color: black;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+        }
+        .p-wave {
+            background-color: rgba(0, 0, 255, 0.5);
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+        }
+        .s-wave {
+            background-color: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+        }
     </style>
 </head>
 <body>
@@ -17,7 +36,7 @@
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([20, 0], 2);
+        const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
         const observatories = [
@@ -27,7 +46,7 @@
             { name: "Wellington", lat: -41.2865, lon: 174.7762 },
             { name: "Istanbul", lat: 41.0082, lon: 28.9784 }
         ];
-        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon]).addTo(map).bindTooltip(`<b>${obs.name}</b>`, { permanent: true, direction: 'right' }));
+        const observatoryMarkers = observatories.map(obs => L.marker([obs.lat, obs.lon], { icon: L.divIcon({ className: 'observatory-marker' }) }).addTo(map).bindTooltip(`<b>${obs.name}</b>`, { permanent: true, direction: 'right' }));
 
         let earthquakeMarkers = [];
         let pWaveCircles = [];
@@ -35,16 +54,12 @@
         let lastEarthquakeTime = 0;
 
         function fetchEarthquakeData() {
-            fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson')
+            fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson')
                 .then(response => response.json())
                 .then(data => {
-                    const newEarthquakes = data.features.filter(eq => eq.properties.time > lastEarthquakeTime);
-                    if (newEarthquakes.length > 0) {
-                        lastEarthquakeTime = newEarthquakes[0].properties.time;
-                        updateEarthquakeMarkers(newEarthquakes);
-                        simulateWaves(newEarthquakes);
-                        zoomToLatestEarthquake(newEarthquakes);
-                    }
+                    updateEarthquakeMarkers(data.features);
+                    simulateWaves(data.features);
+                    zoomToLatestEarthquake(data.features);
                 });
         }
 
@@ -62,10 +77,8 @@
 
         function updateEarthquakeMarkers(earthquakes) {
             earthquakeMarkers.forEach(marker => map.removeLayer(marker));
-            pWaveCircles.forEach(circle => map.removeLayer(circle));
-            sWaveCircles.forEach(circle => map.removeLayer(circle));
             earthquakeMarkers = earthquakes.map(earthquake => {
-                const [lon, lat] = earthquake.geometry.coordinates;
+                const [lon, lat, depth] = earthquake.geometry.coordinates;
                 const magnitude = earthquake.properties.mag;
                 const place = earthquake.properties.place;
                 const time = new Date(earthquake.properties.time).toLocaleString();
@@ -73,18 +86,6 @@
                 const marker = L.circleMarker([lat, lon], { radius: magnitude * 2, color: color, fillOpacity: 0.5 }).addTo(map).bindTooltip(`<b>Location:</b> ${place}<br><b>Magnitude:</b> ${magnitude}<br><b>Time:</b> ${time}`, { permanent: true });
                 return marker;
             });
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2, depth) {
-            function toRad(x) { return x * Math.PI / 180; }
-            const R = 6371; // km (mean radius of the Earth)
-            const dLat = toRad(lat2 - lat1);
-            const dLon = toRad(lon2 - lon1);
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c;
-            const totalDistance = Math.sqrt(distance * distance + depth * depth);
-            return totalDistance;
         }
 
         function simulateWaves(earthquakes) {
