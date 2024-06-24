@@ -28,17 +28,17 @@
         }
 
         .p-wave {
-            background-color: #FF0000; /* Red color for p-waves */
-            width: 3px;
-            height: 3px;
+            border: 3px solid #1F77B4; /* Blue color for p-waves */
+            width: 0;
+            height: 0;
             border-radius: 50%;
             opacity: 0.6;
         }
 
         .s-wave {
-            background-color: #1F77B4; /* Blue color for s-waves */
-            width: 5px;
-            height: 5px;
+            border: 3px solid #FF0000; /* Red color for s-waves */
+            width: 0;
+            height: 0;
             border-radius: 50%;
             opacity: 0.6;
         }
@@ -105,26 +105,36 @@
                 const magnitude = earthquake.properties.mag;
 
                 const pWave = L.circle([lat, lon], {
-                    radius: magnitude * 10000,
-                    color: '#FF0000', // Red color for p-waves
+                    radius: 0,
+                    color: '#1F77B4', // Blue color for p-waves
                     fill: false,
                     className: 'wave-circle p-wave'
                 }).addTo(map);
+
                 const sWave = L.circle([lat, lon], {
-                    radius: magnitude * 15000,
-                    color: '#1F77B4', // Blue color for s-waves
+                    radius: 0,
+                    color: '#FF0000', // Red color for s-waves
                     fill: false,
                     className: 'wave-circle s-wave'
                 }).addTo(map);
 
-                waveCircles.push(pWave);
-                waveCircles.push(sWave);
+                let pWaveRadius = 0;
+                let sWaveRadius = 0;
+                const maxRadius = Math.max(magnitude * 10000, magnitude * 15000);
 
-                setTimeout(() => {
-                    map.removeLayer(pWave);
-                    map.removeLayer(sWave);
-                    waveCircles = waveCircles.filter(circle => circle !== pWave && circle !== sWave);
-                }, 20000); // 20秒後に波を消去
+                const animation = setInterval(() => {
+                    pWaveRadius += maxRadius / 20;
+                    sWaveRadius += maxRadius / 20;
+
+                    pWave.setRadius(pWaveRadius);
+                    sWave.setRadius(sWaveRadius);
+
+                    if (pWaveRadius >= maxRadius) {
+                        clearInterval(animation);
+                        map.removeLayer(pWave);
+                        map.removeLayer(sWave);
+                    }
+                }, 1000); // 1秒ごとに更新
             });
         }
 
