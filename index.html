@@ -1,112 +1,64 @@
-<html>
+<!DOCTYPE html>
+<html lang="ja">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>気象庁の震度情報</title>
+    <style>
+        .earthquake {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-<div id="output"></div>
+    <h1>気象庁のリアルタイム震度情報</h1>
+    <div id="earthquake-data">データを取得中...</div>
 
-<script>
-(function() {
-  // websocketサーバアドレスおよびポートを指定
-  var ws = new WebSocket("wss://localhost:443");
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiUrl = 'https://www.jma.go.jp/bosai/quake/data/latest.json';
 
-  var output = document.getElementById('output');
+            function fetchData() {
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        displayData(data);
+                    })
+                    .catch(error => {
+                        console.error('データの取得に失敗しました:', error);
+                        document.getElementById('earthquake-data').innerText = 'データの取得に失敗しました';
+                    });
+            }
 
-  function logStr(eventStr, msg) {
-    return '<div>' + eventStr + ':' + msg + '</div>';
-  }
+            function displayData(data) {
+                const earthquakeDiv = document.getElementById('earthquake-data');
+                earthquakeDiv.innerHTML = '';
 
-  // websoket接続確立イベント処理
-  ws.onopen = function() {
-    output.innerHTML += logStr('connect', 'success');
+                const earthquakes = data.data;
 
-    // websocket認証メッセージ
-    var auth_message = {
-      version: {
-        common_version:   "1",					// commonセクションバージョン
-        details_version:  "1"					// detailsセクションバージョン
-      },
-      common: {
-        datatype:     "authentication",				// データタイプ:認証(authenticaion指定)
-        msgid:        "*",					// *を設定(認証では利用しない)
-        sendid:       "*",					// *を設定(認証では利用しない)
-        senddatetime: "*"					// *を設定(認証では利用しない)
-      },
-      details:      {
-        password:     "trialpass"				// ユーザパスワードを設定(利用申請時に発行)
-      },
-      sender: {
-        version:      "1",					// senderセクションバージョン
-        userid:       "trialuser",				// ユーザＩＤを設定(利用申請時に発行)
-        termid:       "000000001"				// 接続端末識別ＩＤを設定(ユーザがユニークな値となるよう任意に採番)
-      },
-      receiver: {
-        version:      "1",					// receiverセクションバージョン
-        userid:       "*",					// *を設定(認証では利用しない)
-        termid:       "*"					// *を設定(認証では利用しない)
-      }
-    };
-    // JSON形式に変換し、websocketサーバに送信
-    ws.send(JSON.stringify(auth_message));
-  };
+                earthquakes.forEach(earthquake => {
+                    const earthquakeElement = document.createElement('div');
+                    earthquakeElement.classList.add('earthquake');
+                    earthquakeElement.innerHTML = `
+                        <p>震源地: ${earthquake.place}</p>
+                        <p>震度: ${earthquake.maxScale}</p>
+                        <p>マグニチュード: ${earthquake.mag}</p>
+                        <p>発生時刻: ${new Date(earthquake.time).toLocaleString()}</p>
+                    `;
+                    earthquakeDiv.appendChild(earthquakeElement);
+                });
+            }
 
-  // メッセージ受信イベント処理
-  ws.onmessage = function(e) {
-    // JSON形式からオブジェクトに変換
-    var parse = JSON.parse(e.data);
-
-    switch( parse.common.datatype ) {
-      case "authentication":    // 認証メッセージ受信処理
-        output.innerHTML += logStr('recieved', 'authentication result');
-        if( parse.details.resultcode === '200' ) {
-          // 認証成功
-          output.innerHTML += logStr('authentication', 'success');
-        } else {
-          // 認証失敗
-          output.innerHTML += logStr('authentication', 'failed');
-        }
-        break;
-      case "earthquake":        // 緊急地震速報受信処理
-        // 地震メッセージ種別判別
-        switch( parse.details.type ) {
-          case 0:  // 通常報
-            break;
-          case 1:  // 訓練報
-            output.innerHTML += "<br><FONT color=\"#ff0000\">これは訓練報です。</FONT><br>";
-            break;
-          case 2:  // 試験報
-            output.innerHTML += "<br><FONT color=\"#ff0000\">これはテスト報です。</FONT><br>";
-            break;
-        }
-        // 地震情報
-        var od = new Date();
-        od.setTime(parse.details.eewinfo.occured_datetime * 1000);
-        var od_hh = od.getHours();
-        var od_mm = od.getMinutes();
-        var od_ss = od.getSeconds();
-        output.innerHTML += od_hh + ":" + od_mm + ":" + od_ss + ":" + "頃 地震が発生しました。<br>";
-        output.innerHTML += "震源地は、北緯" + parse.details.eewinfo.latitude + "度 東経" + parse.details.eewinfo.longitude + "度 深さ" + parse.details.eewinfo.depth + "km 地点です。<br>";
-        output.innerHTML += "マグニチュード" + parse.details.eewinfo.magnitude + "と推測されます。<br>";
-  
-        // 地域予測震度情報(例:メッシュコード:533945=新宿区)
-        if( parse.details.areainfo["533945"] !== void 0 ) {
-          output.innerHTML += "このエリアの震度は" + parse.details.areainfo["533945"].intensity + "程度と推測されます。<br>";
-          var sd = new Date();
-          sd.setTime(parse.details.areainfo["533945"].s_time * 1000);
-          var sd_hh = sd.getHours();
-          var sd_mm = sd.getMinutes();
-          var sd_ss = sd.getSeconds();
-          output.innerHTML += "主要動の到達時刻は" + sd_hh + ":" + sd_mm + ":" + sd_ss + ":" + "頃と推測されます。<br>";
-        }
-        break;
-    }
-  };
-
-  // 切断イベント処理
-  ws.onclose = function (e) {
-    output.innerHTML += logStr('disconnect', e.code + ' - ' + e.type);
-  };
-}());
-
-</script>
+            fetchData();
+            setInterval(fetchData, 5000); // 5秒ごとにデータを更新
+        });
+    </script>
 </body>
 </html>
