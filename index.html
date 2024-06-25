@@ -1,146 +1,112 @@
-<!DOCTYPE html>
-<html lang="ja">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム地震監視システム</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <style>
-        #map {
-            height: 600px;
-            width: 100%;
-        }
-
-        .wave-circle {
-            position: absolute;
-            pointer-events: none;
-            opacity: 0.7;
-            transition: all 0.5s ease-in-out;
-        }
-
-        .p-wave {
-            border: 3px solid #1F77B4; /* 青色のp波 */
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            opacity: 0.6;
-        }
-
-        .s-wave {
-            border: 3px solid #FF0000; /* 赤色のs波 */
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            opacity: 0.6;
-        }
-    </style>
 </head>
-
 <body>
-    <h1>リアルタイム地震監視システム</h1>
-    <div id="map"></div>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
-        const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(map);
+<div id="output"></div>
 
-        let earthquakeMarkers = [];
-        let waveCircles = [];
+<script>
+(function() {
+  // websocketサーバアドレスおよびポートを指定
+  var ws = new WebSocket("wss://localhost:443");
 
-        function fetchEarthquakeData() {
-            fetch('https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2024-01-01&endtime=2024-06-30&orderby=time')
-                .then(response => response.json())
-                .then(data => {
-                    const sortedEarthquakes = data.features;
-                    updateEarthquakeMarkers(sortedEarthquakes);
-                    simulateWaves(sortedEarthquakes);
-                    zoomToLatestEarthquake(sortedEarthquakes);
-                });
+  var output = document.getElementById('output');
+
+  function logStr(eventStr, msg) {
+    return '<div>' + eventStr + ':' + msg + '</div>';
+  }
+
+  // websoket接続確立イベント処理
+  ws.onopen = function() {
+    output.innerHTML += logStr('connect', 'success');
+
+    // websocket認証メッセージ
+    var auth_message = {
+      version: {
+        common_version:   "1",					// commonセクションバージョン
+        details_version:  "1"					// detailsセクションバージョン
+      },
+      common: {
+        datatype:     "authentication",				// データタイプ:認証(authenticaion指定)
+        msgid:        "*",					// *を設定(認証では利用しない)
+        sendid:       "*",					// *を設定(認証では利用しない)
+        senddatetime: "*"					// *を設定(認証では利用しない)
+      },
+      details:      {
+        password:     "trialpass"				// ユーザパスワードを設定(利用申請時に発行)
+      },
+      sender: {
+        version:      "1",					// senderセクションバージョン
+        userid:       "trialuser",				// ユーザＩＤを設定(利用申請時に発行)
+        termid:       "000000001"				// 接続端末識別ＩＤを設定(ユーザがユニークな値となるよう任意に採番)
+      },
+      receiver: {
+        version:      "1",					// receiverセクションバージョン
+        userid:       "*",					// *を設定(認証では利用しない)
+        termid:       "*"					// *を設定(認証では利用しない)
+      }
+    };
+    // JSON形式に変換し、websocketサーバに送信
+    ws.send(JSON.stringify(auth_message));
+  };
+
+  // メッセージ受信イベント処理
+  ws.onmessage = function(e) {
+    // JSON形式からオブジェクトに変換
+    var parse = JSON.parse(e.data);
+
+    switch( parse.common.datatype ) {
+      case "authentication":    // 認証メッセージ受信処理
+        output.innerHTML += logStr('recieved', 'authentication result');
+        if( parse.details.resultcode === '200' ) {
+          // 認証成功
+          output.innerHTML += logStr('authentication', 'success');
+        } else {
+          // 認証失敗
+          output.innerHTML += logStr('authentication', 'failed');
         }
-
-        function getIntensityColor(magnitude) {
-            // Set color based on magnitude (reference from Japan Meteorological Agency intensity distribution)
-            if (magnitude >= 7) return '#990000'; // Intensity 7 (red)
-            if (magnitude >= 6) return '#FF0000'; // Intensity 6- (red)
-            if (magnitude >= 5) return '#FF4500'; // Intensity 5+ (orange)
-            if (magnitude >= 4) return '#FFD700'; // Intensity 4 (yellow)
-            if (magnitude >= 3) return '#FFFF00'; // Intensity 3 (yellow)
-            if (magnitude >= 2) return '#9ACD32'; // Intensity 2 (green)
-            return '#00FF00'; // Intensity 1 or below (blue)
+        break;
+      case "earthquake":        // 緊急地震速報受信処理
+        // 地震メッセージ種別判別
+        switch( parse.details.type ) {
+          case 0:  // 通常報
+            break;
+          case 1:  // 訓練報
+            output.innerHTML += "<br><FONT color=\"#ff0000\">これは訓練報です。</FONT><br>";
+            break;
+          case 2:  // 試験報
+            output.innerHTML += "<br><FONT color=\"#ff0000\">これはテスト報です。</FONT><br>";
+            break;
         }
-
-        function updateEarthquakeMarkers(earthquakes) {
-            earthquakeMarkers.forEach(marker => map.removeLayer(marker));
-            earthquakeMarkers = earthquakes.map(earthquake => {
-                const [lon, lat, depth] = earthquake.geometry.coordinates;
-                const magnitude = earthquake.properties.mag;
-                const place = earthquake.properties.place;
-                const time = new Date(earthquake.properties.time).toLocaleString();
-                const color = getIntensityColor(magnitude);
-                const marker = L.circleMarker([lat, lon], {
-                    radius: magnitude * 2,
-                    color: color,
-                    fillOpacity: 0.5
-                }).addTo(map).bindTooltip(`<b>場所:</b> ${place}<br><b>マグニチュード:</b> ${magnitude}<br><b>時間:</b> ${time}`, {
-                    permanent: true
-                });
-                return marker;
-            });
+        // 地震情報
+        var od = new Date();
+        od.setTime(parse.details.eewinfo.occured_datetime * 1000);
+        var od_hh = od.getHours();
+        var od_mm = od.getMinutes();
+        var od_ss = od.getSeconds();
+        output.innerHTML += od_hh + ":" + od_mm + ":" + od_ss + ":" + "頃 地震が発生しました。<br>";
+        output.innerHTML += "震源地は、北緯" + parse.details.eewinfo.latitude + "度 東経" + parse.details.eewinfo.longitude + "度 深さ" + parse.details.eewinfo.depth + "km 地点です。<br>";
+        output.innerHTML += "マグニチュード" + parse.details.eewinfo.magnitude + "と推測されます。<br>";
+  
+        // 地域予測震度情報(例:メッシュコード:533945=新宿区)
+        if( parse.details.areainfo["533945"] !== void 0 ) {
+          output.innerHTML += "このエリアの震度は" + parse.details.areainfo["533945"].intensity + "程度と推測されます。<br>";
+          var sd = new Date();
+          sd.setTime(parse.details.areainfo["533945"].s_time * 1000);
+          var sd_hh = sd.getHours();
+          var sd_mm = sd.getMinutes();
+          var sd_ss = sd.getSeconds();
+          output.innerHTML += "主要動の到達時刻は" + sd_hh + ":" + sd_mm + ":" + sd_ss + ":" + "頃と推測されます。<br>";
         }
+        break;
+    }
+  };
 
-        function simulateWaves(earthquakes) {
-            earthquakes.forEach(earthquake => {
-                const [lon, lat, depth] = earthquake.geometry.coordinates;
-                const magnitude = earthquake.properties.mag;
+  // 切断イベント処理
+  ws.onclose = function (e) {
+    output.innerHTML += logStr('disconnect', e.code + ' - ' + e.type);
+  };
+}());
 
-                const pWave = L.circle([lat, lon], {
-                    radius: 0,
-                    color: '#1F77B4', // Blue color for p-waves
-                    fill: false,
-                    className: 'wave-circle p-wave'
-                }).addTo(map);
-
-                const sWave = L.circle([lat, lon], {
-                    radius: 0,
-                    color: '#FF0000', // Red color for s-waves
-                    fill: false,
-                    className: 'wave-circle s-wave'
-                }).addTo(map);
-
-                let pWaveRadius = 0;
-                let sWaveRadius = 0;
-                const maxRadius = Math.max(magnitude * 10000, magnitude * 15000);
-
-                const animation = setInterval(() => {
-                    pWaveRadius += maxRadius / 20;
-                    sWaveRadius += maxRadius / 20;
-
-                    pWave.setRadius(pWaveRadius);
-                    sWave.setRadius(sWaveRadius);
-
-                    if (pWaveRadius >= maxRadius) {
-                        clearInterval(animation);
-                        map.removeLayer(pWave);
-                        map.removeLayer(sWave);
-                    }
-                }, 1000); // Update every 1 second
-            });
-        }
-
-        function zoomToLatestEarthquake(earthquakes) {
-            if (earthquakes.length > 0) {
-                const latestEarthquake = earthquakes[0];
-                const [lon, lat] = latestEarthquake.geometry.coordinates;
-                map.setView([lat, lon], 8); // Zoom to the epicenter
-            }
-        }
-
-        fetchEarthquakeData();
-        setInterval(fetchEarthquakeData, 1000); // Update every 1 second
-    </script>
+</script>
 </body>
-
 </html>
