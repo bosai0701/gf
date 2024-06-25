@@ -1,64 +1,27 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>気象庁の震度情報</title>
-    <style>
-        .earthquake {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-    </style>
+    <title>予想円</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin="" />
+
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
+
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <link href="./css/stylesheet.css" rel="stylesheet" />
 </head>
+
 <body>
-    <h1>気象庁のリアルタイム震度情報</h1>
-    <div id="earthquake-data">データを取得中...</div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const apiUrl = 'https://www.jma.go.jp/bosai/quake/data/latest.json';
-
-            function fetchData() {
-                fetch(apiUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        displayData(data);
-                    })
-                    .catch(error => {
-                        console.error('データの取得に失敗しました:', error);
-                        document.getElementById('earthquake-data').innerText = 'データの取得に失敗しました';
-                    });
-            }
-
-            function displayData(data) {
-                const earthquakeDiv = document.getElementById('earthquake-data');
-                earthquakeDiv.innerHTML = '';
-
-                const earthquakes = data.data;
-
-                earthquakes.forEach(earthquake => {
-                    const earthquakeElement = document.createElement('div');
-                    earthquakeElement.classList.add('earthquake');
-                    earthquakeElement.innerHTML = `
-                        <p>震源地: ${earthquake.place}</p>
-                        <p>震度: ${earthquake.maxScale}</p>
-                        <p>マグニチュード: ${earthquake.mag}</p>
-                        <p>発生時刻: ${new Date(earthquake.time).toLocaleString()}</p>
-                    `;
-                    earthquakeDiv.appendChild(earthquakeElement);
-                });
-            }
-
-            fetchData();
-            setInterval(fetchData, 5000); // 5秒ごとにデータを更新
-        });
-    </script>
+    <h1 id="map"></h1>
+    <script src="./js/main.js"></script>
 </body>
+
 </html>
+
